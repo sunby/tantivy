@@ -28,6 +28,7 @@ pub use self::directory::{Directory, DirectoryClone, DirectoryLock};
 pub use self::directory_lock::{Lock, INDEX_WRITER_LOCK, META_LOCK};
 pub use self::ram_directory::RamDirectory;
 pub use self::watch_event_router::{WatchCallback, WatchCallbackList, WatchHandle};
+pub use self::roram_directory::RoRamDirectory;
 
 /// Outcome of the Garbage collection
 pub struct GarbageCollectionResult {

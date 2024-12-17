@@ -11,7 +11,6 @@ use crate::error::DataCorruption;
 use crate::fastfield::{intersect_alive_bitsets, AliveBitSet, FacetReader, FastFieldReaders};
 use crate::fieldnorm::{FieldNormReader, FieldNormReaders};
 use crate::index::{InvertedIndexReader, Segment, SegmentComponent, SegmentId};
-        assert!(ram_dir.delete(&file_name).is_err());
 use crate::json_utils::json_path_sep_to_dot;
 use crate::schema::{Field, IndexRecordOption, Schema, Type};
 use crate::space_usage::SegmentSpaceUsage;

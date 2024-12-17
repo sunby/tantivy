@@ -1,23 +1,32 @@
 use std::{
     collections::HashMap,
-    fs::File,
-    io::Read,
+    fs::{File, OpenOptions},
+    io::{self, Read, Write},
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
 };
 
 use common::file_slice::FileSlice;
+use fs4::FileExt;
 
-use super::Directory;
+use crate::core::META_FILEPATH;
 
-// RoRamDirectory is a read only directory that stores data in RAM.
+use super::{
+    error::{LockError, OpenReadError, OpenWriteError},
+    file_watcher::FileWatcher,
+    mmap_directory::ReleaseLockFile,
+    Directory, DirectoryLock, META_LOCK,
+};
+
+/// RoRamDirectory is a read only directory that stores data in RAM.
+/// Note: please make sure the index files exist before creating a RoRamDirectory.
 #[derive(Clone)]
-struct RoRamDirectory {
+pub struct RoRamDirectory {
     inner: Arc<RwLock<RoRamDirectoryInner>>,
 }
 
 impl RoRamDirectory {
-    fn new(dir: &Path) -> Result<RoRamDirectory, std::io::Error> {
+    pub fn new(dir: &Path) -> Result<RoRamDirectory, std::io::Error> {
         Ok(RoRamDirectory {
             inner: Arc::new(RwLock::new(RoRamDirectoryInner::new(dir)?)),
         })
@@ -41,11 +50,12 @@ impl Directory for RoRamDirectory {
     }
 
     fn open_read(&self, path: &Path) -> Result<FileSlice, super::error::OpenReadError> {
-        self.inner.read().unwrap().open_read(path)
+        self.inner.write().unwrap().open_read(path)
     }
 
     fn delete(&self, path: &std::path::Path) -> Result<(), super::error::DeleteError> {
-        unimplemented!("RoRamDirectory is read-only")
+        self.inner.write().unwrap().delete(path);
+        Ok(())
     }
 
     fn exists(&self, path: &std::path::Path) -> Result<bool, super::error::OpenReadError> {
@@ -56,38 +66,78 @@ impl Directory for RoRamDirectory {
         &self,
         path: &std::path::Path,
     ) -> Result<super::WritePtr, super::error::OpenWriteError> {
-        unimplemented!("RoRamDirectory is read-only")
+        unimplemented!()
+    }
+
+    fn acquire_lock(
+        &self,
+        lock: &super::Lock,
+    ) -> Result<super::DirectoryLock, super::error::LockError> {
+        let full_path = self.inner.read().unwrap().root_path.join(&lock.filepath);
+        // We make sure that the file exists.
+        let file: File = OpenOptions::new()
+            .write(true)
+            .create(true) //< if the file does not exist yet, create it.
+            .truncate(false)
+            .open(full_path)
+            .map_err(LockError::wrap_io_error)?;
+        if lock.is_blocking {
+            file.lock_exclusive().map_err(LockError::wrap_io_error)?;
+        } else {
+            file.try_lock_exclusive().map_err(|_| LockError::LockBusy)?
+        }
+        // dropping the file handle will release the lock.
+        Ok(DirectoryLock::from(Box::new(ReleaseLockFile {
+            path: lock.filepath.clone(),
+            _file: file,
+        })))
     }
 
     fn atomic_read(&self, path: &std::path::Path) -> Result<Vec<u8>, super::error::OpenReadError> {
-        let bytes = self
-            .inner
-            .read()
-            .unwrap()
-            .open_read(path)?
-            .read_bytes()
-            .map_err(|io_error| super::error::OpenReadError::IoError {
-                io_error: Arc::new(io_error),
-                filepath: path.to_path_buf(),
-            })?;
-        Ok(bytes.as_slice().to_owned())
+        let full_path = self.inner.read().unwrap().root_path.join(path);
+        let mut buffer = Vec::new();
+        match File::open(full_path) {
+            Ok(mut file) => {
+                file.read_to_end(&mut buffer).map_err(|io_error| {
+                    OpenReadError::wrap_io_error(io_error, path.to_path_buf())
+                })?;
+                Ok(buffer)
+            }
+            Err(io_error) => {
+                if io_error.kind() == io::ErrorKind::NotFound {
+                    Err(OpenReadError::FileDoesNotExist(path.to_owned()))
+                } else {
+                    Err(OpenReadError::wrap_io_error(io_error, path.to_path_buf()))
+                }
+            }
+        }
     }
 
-    fn atomic_write(&self, path: &std::path::Path, data: &[u8]) -> std::io::Result<()> {
+    fn atomic_write(&self, _path: &std::path::Path, _data: &[u8]) -> std::io::Result<()> {
         unimplemented!("RoRamDirectory is read-only")
     }
 
     fn sync_directory(&self) -> std::io::Result<()> {
-        todo!()
+        Ok(())
     }
 
     fn watch(&self, watch_callback: super::WatchCallback) -> crate::Result<super::WatchHandle> {
-        todo!()
+        self.inner.read().unwrap().watch(watch_callback)
     }
 }
 
 struct RoRamDirectoryInner {
+    root_path: PathBuf,
     files: HashMap<PathBuf, FileSlice>,
+    watcher: FileWatcher,
+}
+
+fn open_file(path: &Path) -> Result<FileSlice, std::io::Error> {
+    let mut file = File::open(path)?;
+    let mut data = Vec::new();
+    file.read_to_end(&mut data)?;
+    let file_slice = FileSlice::from(data);
+    Ok(file_slice)
 }
 
 impl RoRamDirectoryInner {
@@ -101,26 +151,40 @@ impl RoRamDirectoryInner {
                 warn!("Skipping non-file {:?}", path);
                 continue;
             }
-            let mut file = File::open(&path)?;
-            let mut data = Vec::new();
-            file.read_to_end(&mut data)?;
-            let file_slice = FileSlice::from(data);
+            let file_slice = open_file(&path)?;
             files.insert(entry.file_name().into(), file_slice);
         }
-        Ok(RoRamDirectoryInner { files })
+        Ok(RoRamDirectoryInner {
+            root_path: dir.to_path_buf(),
+            files,
+            watcher: FileWatcher::new(&dir.join(*META_FILEPATH)),
+        })
     }
 
-    fn open_read(&self, path: &Path) -> Result<FileSlice, super::error::OpenReadError> {
-        self.files
-            .get(path)
-            .cloned()
-            .ok_or(super::error::OpenReadError::FileDoesNotExist(
-                path.to_path_buf(),
-            ))
+    fn open_read(&mut self, path: &Path) -> Result<FileSlice, super::error::OpenReadError> {
+        let slice = self.files.get(path).cloned();
+        match slice {
+            Some(slice) => Ok(slice),
+            None => {
+                let full_path = self.root_path.join(path);
+                let file_slice = open_file(&full_path)
+                    .map_err(|io_error| OpenReadError::wrap_io_error(io_error, full_path))?;
+                self.files.insert(path.to_path_buf(), file_slice.clone());
+                Ok(file_slice)
+            }
+        }
     }
 
     fn exists(&self, path: &Path) -> bool {
         self.files.contains_key(path)
+    }
+
+    fn watch(&self, watch_callback: super::WatchCallback) -> crate::Result<super::WatchHandle> {
+        Ok(self.watcher.watch(watch_callback))
+    }
+
+    fn delete(&mut self, path: &Path) {
+        self.files.remove(path);
     }
 }
 
