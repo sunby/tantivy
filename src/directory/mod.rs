@@ -10,6 +10,7 @@ mod footer;
 mod managed_directory;
 mod ram_directory;
 mod watch_event_router;
+mod roram_directory;
 
 /// Errors specific to the directory module.
 pub mod error;
