@@ -102,6 +102,7 @@ impl FileWatcher {
 
 impl Drop for FileWatcher {
     fn drop(&mut self) {
+        info!("Dropping meta file watcher {:?}", self.path);
         self.state.store(2, Ordering::SeqCst);
         if let Some(handle) = self.watch_handle.write().unwrap().take() {
             let _ = self.wakeup_channel.write().unwrap().take();
@@ -110,6 +111,7 @@ impl Drop for FileWatcher {
                 .expect("Failed to join meta file watcher thread");
             info!("Meta file watcher thread joined");
         }
+        info!("Meta file watcher dropped {:?}", self.path);
     }
 }
 
