@@ -60,6 +60,9 @@ fn save_managed_paths(
 }
 
 impl ManagedDirectory {
+    pub fn root_path(&self) -> String {
+        self.directory.root_path()
+    }
     /// Wraps a directory as managed directory.
     pub fn wrap(directory: Box<dyn Directory>) -> crate::Result<ManagedDirectory> {
         match directory.atomic_read(&MANAGED_FILEPATH) {

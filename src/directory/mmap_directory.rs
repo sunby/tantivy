@@ -274,6 +274,10 @@ impl MmapDirectory {
         self.inner.root_path.join(relative_path)
     }
 
+    pub fn root_path(&self) -> String {
+        self.inner.root_path.to_str().unwrap().to_string()
+    }
+
     /// Returns some statistical information
     /// about the Mmap cache.
     ///

@@ -73,11 +73,19 @@ impl Deref for SegmentUpdater {
 fn garbage_collect_files(
     segment_updater: SegmentUpdater,
 ) -> crate::Result<GarbageCollectionResult> {
-    info!("Running garbage collection");
+    info!(
+        "Running garbage collection:{:?}",
+        segment_updater.index.directory().root_path()
+    );
     let mut index = segment_updater.index.clone();
-    index
+    let r = index
         .directory_mut()
-        .garbage_collect(move || segment_updater.list_files())
+        .garbage_collect(move || segment_updater.list_files());
+    info!(
+        "Garbage collection done: {:?}",
+        index.directory().root_path()
+    );
+    r
 }
 
 /// Merges a list of segments the list of segment givens in the `segment_entries`.

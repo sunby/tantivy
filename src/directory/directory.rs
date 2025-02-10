@@ -223,6 +223,10 @@ pub trait Directory: DirectoryClone + fmt::Debug + Send + Sync + 'static {
     /// `OnCommitWithDelay` `ReloadPolicy`. Not implementing watch in a `Directory` only prevents
     /// the `OnCommitWithDelay` `ReloadPolicy` to work properly.
     fn watch(&self, watch_callback: WatchCallback) -> crate::Result<WatchHandle>;
+
+    fn root_path(&self) -> String {
+        "".to_string()
+    }
 }
 
 /// DirectoryClone
@@ -232,7 +236,8 @@ pub trait DirectoryClone {
 }
 
 impl<T> DirectoryClone for T
-where T: 'static + Directory + Clone
+where
+    T: 'static + Directory + Clone,
 {
     fn box_clone(&self) -> Box<dyn Directory> {
         Box::new(self.clone())
