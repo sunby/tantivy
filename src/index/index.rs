@@ -540,6 +540,7 @@ impl Index {
         &self,
         options: IndexWriterOptions,
     ) -> crate::Result<IndexWriter<D>> {
+        info!("[sunby debug] new writer {:?}", self.directory.root_path());
         let directory_lock = self
             .directory
             .acquire_lock(&INDEX_WRITER_LOCK)

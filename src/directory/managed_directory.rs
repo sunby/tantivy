@@ -138,6 +138,7 @@ impl ManagedDirectory {
             // 2) writer change meta.json (for instance after a merge or a commit)
             // 3) gc kicks in.
             // 4) gc removes a file that was useful for process B, before process B opened it.
+            info!("[sunby debug] gc acquire lock on {:?}", self.root_path());
             match self.acquire_lock(&META_LOCK) {
                 Ok(_meta_lock) => {
                     let living_files = get_living_files();
