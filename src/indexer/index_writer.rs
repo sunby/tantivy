@@ -2617,15 +2617,14 @@ mod tests {
 
         impl Drop for A {
             fn drop(&mut self) {
-                println!("backtrace: {:?}", Backtrace::force_capture());
+                // println!("backtrace: {:?}", Backtrace::force_capture());
                 println!("drop A");
             }
         }
 
         let a = A {};
-        {
-            a.print();
-        }
+        let b = Box::new(a);
+        b.print();
         println!("done");
     }
 }

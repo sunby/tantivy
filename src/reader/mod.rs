@@ -1,5 +1,6 @@
 mod warming;
 
+use std::backtrace::Backtrace;
 use std::sync::atomic::AtomicU64;
 use std::sync::{atomic, Arc, Weak};
 
