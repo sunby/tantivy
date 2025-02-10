@@ -300,11 +300,12 @@ impl MmapDirectory {
 struct ReleaseLockFile {
     _file: File,
     path: PathBuf,
+    full_path: PathBuf,
 }
 
 impl Drop for ReleaseLockFile {
     fn drop(&mut self) {
-        info!("[sunby debug] Releasing lock {:?}", self.path);
+        info!("[sunby debug] Releasing lock {:?}", self.full_path);
     }
 }
 
@@ -484,17 +485,18 @@ impl Directory for MmapDirectory {
             .write(true)
             .create(true) //< if the file does not exist yet, create it.
             .truncate(false)
-            .open(full_path)
+            .open(&full_path)
             .map_err(LockError::wrap_io_error)?;
         if lock.is_blocking {
             file.lock_exclusive().map_err(LockError::wrap_io_error)?;
         } else {
             file.try_lock_exclusive().map_err(|_| LockError::LockBusy)?
         }
-        info!("[sunby debug] Acquired lock on {:?}", lock.filepath);
+        info!("[sunby debug] Acquired lock on {:?}", self.root_path());
         // dropping the file handle will release the lock.
         Ok(DirectoryLock::from(Box::new(ReleaseLockFile {
             path: lock.filepath.clone(),
+            full_path: full_path,
             _file: file,
         })))
     }
