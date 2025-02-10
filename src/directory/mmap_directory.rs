@@ -304,7 +304,7 @@ struct ReleaseLockFile {
 
 impl Drop for ReleaseLockFile {
     fn drop(&mut self) {
-        debug!("Releasing lock {:?}", self.path);
+        info!("[sunby debug] Releasing lock {:?}", self.path);
     }
 }
 
@@ -491,6 +491,7 @@ impl Directory for MmapDirectory {
         } else {
             file.try_lock_exclusive().map_err(|_| LockError::LockBusy)?
         }
+        info!("[sunby debug] Acquired lock on {:?}", lock.filepath);
         // dropping the file handle will release the lock.
         Ok(DirectoryLock::from(Box::new(ReleaseLockFile {
             path: lock.filepath.clone(),
