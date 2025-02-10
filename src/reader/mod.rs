@@ -194,8 +194,9 @@ impl InnerIndexReader {
     /// as we are opening our index.
     fn open_segment_readers(index: &Index) -> crate::Result<Vec<SegmentReader>> {
         info!(
-            "[sunby debug] open_segment_readers {:?}",
-            index.directory().root_path()
+            "[sunby debug] open_segment_readers {:?}, {:?}",
+            index.directory().root_path(),
+            Backtrace::force_capture()
         );
         // Prevents segment files from getting deleted while we are in the process of opening them
         let _meta_lock = index.directory().acquire_lock(&META_LOCK)?;
