@@ -59,6 +59,7 @@ impl Drop for DirectoryLockGuard {
             error!("Failed to remove the lock file. {:?}", e);
         }
         info!("Removed lock on {:?}", self.path);
+    }
 }
 
 enum TryAcquireLockError {
