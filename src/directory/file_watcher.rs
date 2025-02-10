@@ -104,8 +104,9 @@ impl FileWatcher {
 impl Drop for FileWatcher {
     fn drop(&mut self) {
         info!(
-            "[sunby debug] Dropping meta file watcher backtrace {:?}",
-            Backtrace::force_capture()
+            "[sunby debug] Dropping meta file watcher backtrace {:?}, {:?}",
+            self.path,
+            Backtrace::force_capture(),
         );
         info!("Dropping meta file watcher {:?}", self.path);
         self.state.store(2, Ordering::SeqCst);

@@ -838,6 +838,7 @@ impl<D: Document> Drop for IndexWriter<D> {
 
 #[cfg(test)]
 mod tests {
+    use std::backtrace::Backtrace;
     use std::collections::{HashMap, HashSet};
     use std::net::Ipv6Addr;
 
@@ -2616,6 +2617,7 @@ mod tests {
 
         impl Drop for A {
             fn drop(&mut self) {
+                println!("backtrace: {:?}", Backtrace::force_capture());
                 println!("drop A");
             }
         }
