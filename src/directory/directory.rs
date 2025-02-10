@@ -58,7 +58,7 @@ impl Drop for DirectoryLockGuard {
         if let Err(e) = self.directory.delete(&self.path) {
             error!("Failed to remove the lock file. {:?}", e);
         }
-    }
+        info!("Removed lock on {:?}", self.path);
 }
 
 enum TryAcquireLockError {
@@ -80,6 +80,7 @@ fn try_acquire_lock(
         OpenWriteError::IoError { io_error, .. } => TryAcquireLockError::IoError(io_error),
     })?;
     write.flush().map_err(TryAcquireLockError::from)?;
+    info!("Acquired lock on {:?}", filepath);
     Ok(DirectoryLock::from(Box::new(DirectoryLockGuard {
         directory: directory.box_clone(),
         path: filepath.to_owned(),

@@ -274,10 +274,6 @@ impl MmapDirectory {
         self.inner.root_path.join(relative_path)
     }
 
-    pub fn root_path(&self) -> String {
-        self.inner.root_path.to_str().unwrap().to_string()
-    }
-
     /// Returns some statistical information
     /// about the Mmap cache.
     ///
@@ -372,6 +368,10 @@ pub(crate) fn atomic_write(path: &Path, content: &[u8]) -> io::Result<()> {
 }
 
 impl Directory for MmapDirectory {
+    fn root_path(&self) -> String {
+        self.inner.root_path.to_str().unwrap().to_string()
+    }
+
     fn get_file_handle(&self, path: &Path) -> Result<Arc<dyn FileHandle>, OpenReadError> {
         debug!("Open Read {:?}", path);
         let full_path = self.resolve_path(path);
