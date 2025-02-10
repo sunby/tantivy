@@ -493,6 +493,10 @@ impl<D: Document> IndexWriter<D> {
 
     /// Detects and removes the files that are not used by the index anymore.
     pub fn garbage_collect_files(&self) -> FutureResult<GarbageCollectionResult> {
+        info!(
+            "[sunby debug] gc schedule_garbage_collect: {:?}",
+            self.index.directory().root_path()
+        );
         self.segment_updater.schedule_garbage_collect()
     }
 
