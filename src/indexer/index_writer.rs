@@ -2603,4 +2603,27 @@ mod tests {
         );
         assert!(matches!(result, Err(TantivyError::InvalidArgument(_))));
     }
+
+    #[test]
+    fn test_xx() {
+        struct A {}
+
+        impl A {
+            fn print(&self) {
+                println!("print A");
+            }
+        }
+
+        impl Drop for A {
+            fn drop(&mut self) {
+                println!("drop A");
+            }
+        }
+
+        let a = A {};
+        {
+            a.print();
+        }
+        println!("done");
+    }
 }

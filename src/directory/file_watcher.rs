@@ -1,3 +1,4 @@
+use std::backtrace::Backtrace;
 use std::io::BufRead;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -102,6 +103,10 @@ impl FileWatcher {
 
 impl Drop for FileWatcher {
     fn drop(&mut self) {
+        info!(
+            "[sunby debug] Dropping meta file watcher backtrace {:?}",
+            Backtrace::force_capture()
+        );
         info!("Dropping meta file watcher {:?}", self.path);
         self.state.store(2, Ordering::SeqCst);
         if let Some(handle) = self.watch_handle.write().unwrap().take() {
