@@ -225,7 +225,8 @@ pub trait Directory: DirectoryClone + fmt::Debug + Send + Sync + 'static {
     fn watch(&self, watch_callback: WatchCallback) -> crate::Result<WatchHandle>;
 
     /// Stops the watcher and clears all registered callbacks.
-    /// The behavior of subsequent calls to `watch()` depends on the specific Directory implementation.
+    /// The behavior of subsequent calls to `watch()` depends on the specific Directory
+    /// implementation.
     fn unwatch_callbacks(&self);
 }
 
@@ -236,8 +237,7 @@ pub trait DirectoryClone {
 }
 
 impl<T> DirectoryClone for T
-where
-    T: 'static + Directory + Clone,
+where T: 'static + Directory + Clone
 {
     fn box_clone(&self) -> Box<dyn Directory> {
         Box::new(self.clone())
