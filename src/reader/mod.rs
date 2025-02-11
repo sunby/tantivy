@@ -302,3 +302,43 @@ impl IndexReader {
         self.inner.searcher()
     }
 }
+
+impl Drop for IndexReader {
+    fn drop(&mut self) {
+        // For mmap directory, unwatch_callbacks() will block until running callbacks are finished to ensure
+        // no lock file will be created after the index reader is dropped.
+        self.inner.index.directory().unwatch_callbacks();
+    }
+}
+
+mod tests {
+    use std::{thread::sleep, time::Duration};
+
+    use crate::{
+        directory::MmapDirectory,
+        schema::{Schema, INDEXED},
+    };
+
+    use super::*;
+
+    #[test]
+    fn test_callback_completes_after_index_reader_drop() {
+        let mut schema_builder = Schema::builder();
+        schema_builder.add_u64_field("num_likes", INDEXED);
+        let schema = schema_builder.build();
+        let index = Index::create_from_tempdir(schema).unwrap();
+        let index_reader = IndexReaderBuilder::new(index).try_into().unwrap();
+
+        let (tx_start, rx_start) = std::sync::mpsc::channel::<()>();
+        let (tx_end, rx_end) = std::sync::mpsc::channel::<()>();
+        let callback = WatchCallback::new(move || {
+            tx_start.send(()).unwrap();
+            sleep(Duration::from_secs(3));
+            tx_end.send(()).unwrap();
+        });
+        let _watch_handle = index_reader.inner.index.directory().watch(callback);
+        rx_start.recv().unwrap();
+        drop(index_reader);
+        assert!(rx_end.try_recv().is_ok());
+    }
+}

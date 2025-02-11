@@ -98,10 +98,8 @@ impl FileWatcher {
 
         Ok(hasher.finalize())
     }
-}
 
-impl Drop for FileWatcher {
-    fn drop(&mut self) {
+    pub fn graceful_stop(&self) {
         self.state.store(2, Ordering::SeqCst);
         if let Some(handle) = self.watch_handle.write().unwrap().take() {
             let _ = self.wakeup_channel.write().unwrap().take();
