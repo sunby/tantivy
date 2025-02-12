@@ -111,6 +111,12 @@ impl FileWatcher {
     }
 }
 
+impl Drop for FileWatcher {
+    fn drop(&mut self) {
+        self.graceful_stop();
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
